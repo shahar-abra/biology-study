@@ -1,0 +1,367 @@
+<title>מעבדת האיזון</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Assistant:wght@400;600;700&display=swap">
+<style>
+/* Layout: phone-first lab app. Sticky vitals bar on top, one activity at a time, thumb-reach tab bar at the bottom.
+   Color follows the textbook convention: red = oxygen-rich blood, blue = oxygen-poor blood. */
+:root{
+  --bg:#edf2f6; --panel:#ffffff; --fg:#14202e; --muted:#54667a; --line:#cdd9e3;
+  --art:#d22f3e; --art-bg:#fde9eb; --vein:#2a5cc0; --vein-bg:#e6eefc;
+  --good:#16835a; --good-bg:#e1f5ec; --warn:#a85400; --warn-bg:#fdefdc;
+  --on-accent:#ffffff;
+  --display:'Karantina','Arial Narrow',Arial,sans-serif;
+  --body:'Assistant','Segoe UI',Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1722; --panel:#18222f; --fg:#e8eef5; --muted:#9aabbd; --line:#2c3b4e;
+  --art:#ff6b76; --art-bg:#3a1d22; --vein:#74a3ff; --vein-bg:#1a2944;
+  --good:#4fd09a; --good-bg:#15332a; --warn:#ffb057; --warn-bg:#3a2a14;
+  --on-accent:#0f1722; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f1722; --panel:#18222f; --fg:#e8eef5; --muted:#9aabbd; --line:#2c3b4e;
+  --art:#ff6b76; --art-bg:#3a1d22; --vein:#74a3ff; --vein-bg:#1a2944;
+  --good:#4fd09a; --good-bg:#15332a; --warn:#ffb057; --warn-bg:#3a2a14;
+  --on-accent:#0f1722; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.55;direction:rtl}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+.gut{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--panel);border-bottom:1px solid var(--line)}
+header .gut{padding-block:8px;display:grid;gap:6px}
+.hrow{display:flex;align-items:center;gap:10px}
+.brand{font-family:var(--display);font-weight:700;font-size:1.9rem;line-height:1;color:var(--art)}
+.ecg{flex:1;min-width:0;height:22px;color:var(--art)}
+.lvl{font-weight:700;font-size:.9rem;white-space:nowrap}
+.lvl small{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--art);border-radius:99px;transition:width .5s}
+main{padding-block:18px calc(96px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;line-height:1.05;text-wrap:balance}
+h1{font-size:2.6rem} h2{font-size:2.1rem} h3{font-size:1.6rem}
+p{margin:0}
+.muted{color:var(--muted)}
+.eyebrow{font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:12px;min-width:0}
+.tile{display:flex;align-items:center;gap:14px;width:100%;text-align:start;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;font:inherit;color:inherit;cursor:pointer}
+.tile:active{transform:scale(.985)}
+.tile .n{flex:0 0 46px;height:46px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:1.7rem;background:var(--art-bg);color:var(--art)}
+.tile.v .n{background:var(--vein-bg);color:var(--vein)}
+.tile.done .n{background:var(--good-bg);color:var(--good)}
+.tile b{display:block;font-size:1.08rem}
+.tile span.s{color:var(--muted);font-size:.92rem}
+.tile .grow{flex:1;min-width:0}
+.btn{background:var(--art);color:var(--on-accent);border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer;min-height:48px}
+.btn.alt{background:var(--vein)}
+.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row .btn{flex:1}
+button:focus-visible,input:focus-visible{outline:3px solid var(--vein);outline-offset:2px}
+.back{background:none;border:0;color:var(--muted);font:inherit;font-weight:700;cursor:pointer;padding:6px 0;justify-self:start}
+.flow{display:grid;gap:4px;justify-items:start}
+.flow div{background:var(--bg);border-radius:10px;padding:8px 12px;font-weight:600}
+.flow div.r{background:var(--art-bg)} .flow div.b{background:var(--vein-bg)}
+.flow s{text-decoration:none;color:var(--muted);padding-inline-start:14px;line-height:1}
+.tip{background:var(--warn-bg);color:var(--fg);border-radius:12px;padding:10px 14px;font-size:.97rem}
+.tip b{color:var(--warn)}
+.dots{display:flex;gap:5px;flex-wrap:wrap}
+.dots i{width:18px;height:6px;border-radius:9px;background:var(--line)}
+.dots i.on{background:var(--art)}
+.opts{display:grid;gap:10px}
+.opt{text-align:start;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;font:inherit;color:inherit;cursor:pointer;min-height:50px}
+.opt.ok{background:var(--good-bg);border-color:var(--good);font-weight:700}
+.opt.no{background:var(--warn-bg);border-color:var(--warn)}
+.opt[aria-pressed="true"]{background:var(--vein-bg);border-color:var(--vein);font-weight:700}
+.fb{border-radius:12px;padding:12px 14px}
+.fb.ok{background:var(--good-bg)} .fb.no{background:var(--warn-bg)}
+.fb b{display:block}
+.big{font-family:var(--display);font-weight:700;font-size:3.4rem;line-height:1;font-variant-numeric:tabular-nums}
+.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+/* sugar gauge */
+.gauge{direction:ltr;position:relative;height:34px;border-radius:99px;background:linear-gradient(90deg,var(--vein-bg),var(--vein-bg) 34%,var(--good-bg) 34%,var(--good-bg) 66%,var(--art-bg) 66%);border:1px solid var(--line)}
+.gauge i{position:absolute;top:-5px;width:14px;height:42px;margin-left:-7px;border-radius:7px;background:var(--fg);transition:left .8s cubic-bezier(.3,1.4,.5,1)}
+.glab{display:flex;justify-content:space-between;direction:ltr;font-size:.82rem;font-weight:700;color:var(--muted)}
+/* route */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--panel);border:1.5px solid var(--line);border-radius:99px;padding:10px 14px;font:inherit;font-weight:600;color:inherit;cursor:pointer;min-height:44px}
+.chip.shake{animation:shake .35s;border-color:var(--warn)}
+@keyframes shake{25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+/* heart */
+.heart{width:92px;height:86px;fill:var(--art);justify-self:center;transform-origin:center;animation:beat 1s infinite}
+@keyframes beat{0%,40%,100%{transform:scale(1)}15%{transform:scale(1.18)}}
+input[type=range]{width:100%;accent-color:var(--art);height:34px}
+label{font-weight:700;display:flex;justify-content:space-between;gap:8px}
+label output{font-variant-numeric:tabular-nums;color:var(--art)}
+/* skin + cube */
+.skin{border-radius:12px;background:var(--warn-bg);padding:14px 12px;display:grid;gap:6px;font-size:.85rem;font-weight:700;color:var(--muted)}
+.skin i{display:block;border-radius:99px;background:var(--art);transition:height .6s}
+.cubebox{height:170px;display:grid;place-items:center}
+.cube{background:var(--vein-bg);border:3px solid var(--vein);border-radius:6px;transition:all .25s}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats div{background:var(--bg);border-radius:12px;padding:8px 4px;min-width:0}
+.stats b{display:block;font-family:var(--display);font-size:1.9rem;line-height:1;font-variant-numeric:tabular-nums}
+.stats span{font-size:.8rem;color:var(--muted);font-weight:700}
+nav{position:fixed;inset:auto 0 0;z-index:9;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav .gut{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding-block:8px}
+nav button{background:none;border:0;border-radius:12px;font:inherit;font-weight:700;font-size:.95rem;color:var(--muted);padding:10px 2px;cursor:pointer;min-height:46px}
+nav button[aria-current="page"]{background:var(--art);color:var(--on-accent)}
+#toast{position:fixed;inset:auto 0 calc(84px + env(safe-area-inset-bottom,0px));margin:auto;width:max-content;max-width:90%;background:var(--fg);color:var(--bg);font-weight:700;border-radius:99px;padding:8px 18px;z-index:11;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none}
+#toast.show{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header><div class="gut">
+  <div class="hrow">
+    <span class="brand">מעבדת האיזון</span>
+    <svg class="ecg" viewBox="0 0 200 22" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.6" points="0,12 60,12 68,8 74,12 84,12 90,20 97,1 104,18 110,12 130,12 140,7 150,12 200,12"/></svg>
+    <span class="lvl" id="lvl"></span>
+  </div>
+  <div class="bar"><i id="xpbar"></i></div>
+</div></header>
+
+<main class="gut" id="view"></main>
+
+<nav><div class="gut">
+  <button data-tab="learn">מסלול</button>
+  <button data-tab="lab">מעבדה</button>
+  <button data-tab="quiz">חידון</button>
+  <button data-tab="tq">שאלות המורה</button>
+</div></nav>
+<div id="toast" role="status"></div>
+
+<script>
+/* ---------- content ---------- */
+const DECKS=[
+{id:'A',name:'הומאוסטזיס ומשוב שלילי',cards:[
+ {h:'מה זה הומאוסטזיס?',p:'היכולת של אורגניזם לשמור על סביבה פנימית יציבה וקבועה בקירוב, גם כשהסביבה החיצונית משתנה.',tip:'"קבועה בקירוב" זה לא מספר אחד קפוא. המדדים עולים ויורדים כל הזמן, אבל נשארים בתוך טווח תקין סביב ערך ממוצע.'},
+ {h:'משוב שלילי',p:'מנגנון הוויסות המרכזי של הגוף. כשמדד (טמפרטורה, לחץ דם, ריכוז חומר) סוטה מהטווח התקין, הגוף פועל כדי לבטל או לצמצם את השינוי ולהחזיר את המדד לערך המטרה.',tip:'התגובה תמיד הפוכה לשינוי. עלה? הגוף מוריד. ירד? הגוף מעלה.'},
+ {h:'הסוכר עלה (אחרי ארוחה)',flow:['רמת הגלוקוז בדם עולה','תאים בלבלב מזהים ומפרישים אינסולין','תאי שריר, שומן וכבד קולטים גלוקוז','רמת הסוכר יורדת חזרה לטווח התקין','הפרשת האינסולין מופחתת']},
+ {h:'הסוכר ירד (צום או מאמץ)',flow:['רמת הגלוקוז בדם יורדת','תאים בלבלב מזהים ומפרישים גלוקגון','הכבד מפרק גליקוגן לגלוקוז ומשחרר לדם','רמת הסוכר עולה חזרה לטווח התקין','הפרשת הגלוקגון מופחתת']},
+ {h:'שלוש מילים שכולם מבלבלים',p:'גלוקוז: הסוכר שבדם. גליקוגן: מאגר של גלוקוז, שמור בכבד. גלוקגון: הורמון שמעלה את רמת הסוכר.',tip:'טריק: גלוקגון מופרש כשהגלוקוז "gone", כלומר כשהוא חסר בדם.'},
+ {h:'כשההומאוסטזיס מופר',p:'לפעמים המנגנון לא מצליח לתקן את הסטייה. בסוכרת, למשל, אין מספיק אינסולין (או שהתאים לא מגיבים אליו), ולכן רמת הסוכר נשארת גבוהה. לאורך זמן זה פוגע בכלי הדם ובאיברים.',tip:'דוגמה נוספת: מכת חום. הגוף לא מצליח לאבד מספיק חום, והטמפרטורה עולה עד כדי פגיעה בתפקוד האיברים.'}
+]},
+{id:'B',name:'מערכת ההובלה',cards:[
+ {h:'מה המערכת מובילה?',p:'גזים (O₂ ו-CO₂), מומסים, הורמונים, חומרי מזון ופסולת. בנוסף היא משתתפת בוויסות טמפרטורת הגוף.'},
+ {h:'מבנה הלב',p:'ארבעה מדורים: עלייה ימנית ועלייה שמאלית, חדר ימין וחדר שמאל. העליות מקבלות דם, החדרים מזרימים אותו החוצה. מסתמים מונעים מהדם לחזור לכיוון ההפוך.'},
+ {h:'למה חדר שמאל שרירי יותר?',p:'חדר שמאל מזרים דם בלחץ גבוה לכל חלקי הגוף (המחזור הגדול): מרחק גדול והתנגדות גדולה בכלי הדם. חדר ימין מזרים רק לריאות הקרובות, ולכן הדופן שלו דקה יותר.',tip:'מבנה מותאם לתפקוד: יותר עבודה, יותר שריר.'},
+ {h:'מחזור הדם הקטן (ריאתי)',flow:['b:חדר ימין','b:עורקי הריאה','נימי הריאה: CO₂ יוצא, O₂ נכנס','r:ורידי הריאה','r:עלייה שמאלית']},
+ {h:'מחזור הדם הגדול (סיסטמי)',flow:['r:חדר שמאל','r:אבי העורקים ועורקים היקפיים','נימי הרקמות בגוף','b:ורידים נבובים','b:עלייה ימנית']},
+ {h:'מלכודת: עורק או וריד?',p:'עורק מוביל דם מהלב החוצה. וריד מחזיר דם אל הלב. זה לא נקבע לפי כמות החמצן!',tip:'עורקי הריאה נושאים דם דל חמצן, וורידי הריאה נושאים דם עשיר בחמצן. שאלה קלאסית במבחנים.'},
+ {h:'תפוקת הלב',p:'נפח הדם שהלב מזרים בדקה אחת.',tip:'תפוקת לב = נפח פעימה × קצב הלב'},
+ {h:'למה לספורטאים דופק מנוחה נמוך?',flow:['אימון אירובי מתמשך מחזק ומגדיל את שריר הלב','נפח הפעימה גדל: יותר דם בכל פעימה','במנוחה הגוף צריך בערך אותה תפוקת לב','מספיקות פחות פעימות בדקה','דופק המנוחה נמוך יותר']},
+ {h:'מסתמים',p:'בלב ובוורידים, המסתמים מאפשרים לדם לזרום בכיוון אחד בלבד. כשמסתם לא נסגר טוב, חלק מהדם חוזר לאחור, והלב צריך לעבוד קשה יותר כדי להזרים את אותה כמות דם.'}
+]},
+{id:'C',name:'ויסות טמפרטורת הגוף',cards:[
+ {h:'מאזן החום',p:'הפקת חום: בתהליכי חילוף חומרים ובפעילות שרירים. איבוד חום: לסביבה, דרך העור ובהזעה.'},
+ {h:'חם בחוץ, או מאמץ',flow:['טמפרטורת הגוף עולה','כלי הדם ההיקפיים בעור מתרחבים','יותר דם זורם קרוב לפני העור, ויותר חום אובד','הזעה: התאדות הזיעה מקררת את הגוף','הטמפרטורה חוזרת לטווח התקין']},
+ {h:'קר בחוץ',flow:['טמפרטורת הגוף יורדת','כלי הדם ההיקפיים בעור מתכווצים','פחות דם זורם קרוב לעור, ופחות חום אובד','צמרמורת ורעד שרירים מגבירים את הפקת החום','הטמפרטורה חוזרת לטווח התקין']},
+ {h:'זה שוב משוב שלילי',p:'בשני המקרים התגובה הפוכה לשינוי: התחממנו, הגוף מקרר. התקררנו, הגוף מחמם. ויסות חום הוא דוגמה מצוינת למשוב שלילי, בדיוק כמו ויסות הסוכר.'},
+ {h:'יחס שטח פנים לנפח',p:'חום מופק בתאים, בכל נפח הגוף, ואובד דרך שטח הפנים. לבעל חיים קטן יש שטח פנים גדול ביחס לנפח שלו, ולכן הוא מאבד חום מהר יחסית לכמות שהוא מפיק.',tip:'בגלל זה ליונקים קטנים, כמו עכבר, קשה לשמור על חום הגוף בסביבה קרה מאוד.'}
+]}];
+
+const Q=[
+['מה פירוש הומאוסטזיס?',['שמירה על סביבה פנימית יציבה וקבועה בקירוב, גם כשהסביבה החיצונית משתנה','מצב שבו מדדי הגוף לא משתנים אף פעם','התאמת הסביבה הפנימית לסביבה החיצונית','הפקת אנרגיה מגלוקוז'],'הומאוסטזיס הוא שמירה על יציבות פנימית למרות שינויים בחוץ.'],
+['במצב הומאוסטטי, ערכי המדדים בגוף...',['נעים בתוך טווח תקין סביב ערך ממוצע','קבועים לגמרי ואינם זזים','משתנים בחופשיות לפי הסביבה','עולים כל הזמן'],'"קבועה בקירוב": יש תנודות קטנות, אבל בתוך טווח תקין.'],
+['במשוב שלילי, תגובת הגוף...',['פועלת בכיוון הפוך לשינוי ומחזירה את המדד לערך המטרה','מגבירה עוד יותר את השינוי','מתחילה רק כשהסביבה החיצונית חוזרת לקדמותה','קיימת רק בוויסות טמפרטורה'],'המילה "שלילי" מתארת תגובה שמבטלת או מצמצמת את השינוי.'],
+['אחרי ארוחה עשירה בפחמימות, מה מפריש הלבלב?',['אינסולין','גלוקגון','גליקוגן','גלוקוז'],'הסוכר עלה, ולכן מופרש אינסולין שמוריד אותו.'],
+['מה עושה האינסולין?',['מאפשר לתאי שריר, שומן וכבד לקלוט גלוקוז מהדם','גורם לכבד לפרק גליקוגן','מעלה את רמת הסוכר בדם','מופרש מהכבד בזמן צום'],'התאים קולטים גלוקוז, ורמת הסוכר בדם יורדת.'],
+['בזמן צום רמת הסוכר יורדת. מה מחזיר אותה לטווח התקין?',['גלוקגון גורם לכבד לפרק גליקוגן לגלוקוז ולשחרר אותו לדם','אינסולין גורם לתאים לקלוט גלוקוז','הלבלב משחרר גלוקוז לדם','השרירים מפרישים גלוקגון'],'גלוקגון מהלבלב פועל על הכבד, שבו שמור מאגר הגליקוגן.'],
+['מה מהבאים הוא מאגר של גלוקוז ולא הורמון?',['גליקוגן','גלוקגון','אינסולין'],'גליקוגן הוא חומר תשמורת בכבד. אינסולין וגלוקגון הם הורמונים.'],
+['רמת הסוכר חזרה לטווח התקין אחרי הפרשת אינסולין. מה קורה להפרשת האינסולין?',['היא מופחתת','היא נמשכת באותו קצב','היא מתגברת','היא נפסקת לתמיד'],'כשהמדד חזר לערך המטרה, התגובה נחלשת. כך עובד משוב שלילי.'],
+['לאן מזרים חדר ימין את הדם?',['לעורקי הריאה','לאבי העורקים','לוורידי הריאה','לעלייה ימנית'],'חדר ימין פותח את המחזור הקטן: עורקי הריאה, ומשם לנימי הריאה.'],
+['למה הדופן של חדר שמאל עבה יותר?',['הוא מזרים דם בלחץ גבוה לכל חלקי הגוף','הוא מכיל הרבה יותר דם','הוא מקבל דם ישירות מהגוף','הוא מזרים דם לריאות'],'מרחק גדול והתנגדות גדולה דורשים לחץ גבוה, ולכן שריר עבה.'],
+['מה תפקיד המסתמים בלב?',['למנוע חזרה של דם לכיוון ההפוך','לדחוף את הדם קדימה','לסנן פסולת מהדם','לקבוע את קצב הלב'],'מסתמים שומרים על זרימה בכיוון אחד בלבד.'],
+['מה קורה בנימי הריאה?',['CO₂ משתחרר מהדם ו-O₂ נקלט','O₂ משתחרר מהדם ו-CO₂ נקלט','גלוקוז נקלט בדם','הדם נדחף בלחץ גבוה לגוף'],'בריאות הדם נפטר מ-CO₂ ומתמלא ב-O₂.'],
+['איזה כלי דם מחזיר דם מהגוף אל העלייה הימנית?',['הוורידים הנבובים','ורידי הריאה','אבי העורקים','עורקי הריאה'],'המחזור הגדול מסתיים בוורידים הנבובים שנשפכים לעלייה הימנית.'],
+['ורידי הריאה נושאים דם...',['עשיר בחמצן, אל העלייה השמאלית','דל בחמצן, אל העלייה הימנית','עשיר בחמצן, אל חדר ימין','דל בחמצן, אל הריאות'],'וריד מחזיר דם אל הלב. הדם הזה בדיוק עבר בריאות, ולכן הוא עשיר בחמצן.'],
+['נפח הפעימה 70 מ"ל וקצב הלב 70 פעימות בדקה. מהי תפוקת הלב?',['4,900 מ"ל בדקה','140 מ"ל בדקה','490 מ"ל בדקה','1 מ"ל בדקה'],'תפוקת לב = נפח פעימה × קצב הלב = 70 × 70.'],
+['למה דופק המנוחה של ספורטאי נמוך יותר?',['נפח הפעימה שלו גדול, ולכן מספיקות פחות פעימות לאותה תפוקת לב','הגוף שלו לא צריך חמצן במנוחה','יש לו פחות דם בגוף','המסתמים שלו נסגרים לאט יותר'],'לב מאומן מזרים יותר דם בכל פעימה.'],
+['תא דם אדום יצא מחדר שמאל. לאיזה מדור בלב הוא יגיע ראשון?',['עלייה ימנית','עלייה שמאלית','חדר ימין','חדר שמאל'],'אחרי הסיבוב בגוף הוא חוזר דרך הוורידים הנבובים לעלייה הימנית.'],
+['מה מהבאים אינו תפקיד של מערכת ההובלה?',['פירוק המזון לאבני בניין','הובלת הורמונים','הובלת פסולת','השתתפות בוויסות טמפרטורת הגוף'],'פירוק מזון הוא תפקיד מערכת העיכול. מערכת ההובלה רק מובילה את חומרי המזון.'],
+['בסביבה חמה, כלי הדם ההיקפיים בעור...',['מתרחבים, ואיבוד החום גדל','מתכווצים, ואיבוד החום קטן','מתרחבים, והפקת החום גדלה','לא משתנים'],'יותר דם קרוב לפני העור פירושו יותר חום שעובר לסביבה.'],
+['מה מטרת רעד השרירים בקור?',['להגביר את הפקת החום','להגביר את איבוד החום','להרחיב את כלי הדם','לחסוך באנרגיה'],'פעילות שרירים מפיקה חום.'],
+['למה קשה לעכבר לשמור על חום גופו בסביבה קרה?',['יחס שטח הפנים לנפח שלו גדול, ולכן הוא מאבד חום מהר','יחס שטח הפנים לנפח שלו קטן','אין לו כלי דם היקפיים','הוא לא מפיק חום בכלל'],'הרבה "עור" ביחס למעט "גוף": החום בורח מהר.'],
+['מאין מגיע החום שהגוף מפיק?',['מתהליכי חילוף חומרים ומפעילות שרירים','מההזעה','מהתכווצות כלי הדם','מהסביבה החיצונית בלבד'],'חילוף חומרים ושרירים מפיקים חום. הזעה דווקא מאבדת חום.'],
+['בקור כלי הדם בעור מתכווצים. איך זה עוזר?',['פחות דם זורם קרוב לפני העור, ופחות חום אובד','יותר דם מגיע לעור ומחמם אותו','הלב נח יותר','השרירים רועדים פחות'],'החום נשמר בפנים הגוף.'],
+['ויסות טמפרטורת הגוף הוא דוגמה ל...',['משוב שלילי','מחזור הדם הקטן','תפוקת לב','יחס שטח פנים לנפח'],'התגובה הפוכה לשינוי ומחזירה את הטמפרטורה לטווח התקין.']
+];
+
+const TQ=[
+['מה מאפיין מצב הומאוסטטי? האם ערכי מדדי הגוף אינם משתנים כלל, או שהם נשמרים בתוך טווח סביב ערך ממוצע?','הסביבה הפנימית נשמרת יציבה וקבועה בקירוב, גם כשהסביבה החיצונית משתנה. המדדים (טמפרטורה, רמת סוכר, לחץ דם) לא קפואים על מספר אחד: הם עולים ויורדים כל הזמן, אבל נשארים בתוך טווח תקין סביב ערך ממוצע.'],
+['כיצד פועל מעגל משוב שלילי? הסבירו במילים שלכם.','מדד בגוף סוטה מהטווח התקין ← הגוף מזהה את הסטייה ← מופעלת תגובה בכיוון הפוך לשינוי ← המדד חוזר לערך המטרה ← התגובה נחלשת. דוגמה: רמת הסוכר עולה ← הלבלב מפריש אינסולין ← התאים קולטים גלוקוז ← רמת הסוכר יורדת ← הפרשת האינסולין מופחתת.'],
+['מה קורה כאשר הומאוסטזיס מופר? תנו דוגמה והשלכות אפשריות.','דוגמה: סוכרת. אין מספיק אינסולין (או שהתאים לא מגיבים אליו), ולכן התאים לא קולטים גלוקוז כראוי ורמת הסוכר בדם נשארת גבוהה. לאורך זמן נגרם נזק לכלי דם ולאיברים. דוגמה נוספת: מכת חום. הגוף לא מצליח לאבד מספיק חום, הטמפרטורה עולה, ותפקוד התאים והאיברים נפגע עד כדי סכנת חיים.'],
+['עקבו אחר תא דם אדום היוצא מחדר שמאל. היכן יעבור עד שיחזור לחדר שמאל?','חדר שמאל ← אבי העורקים ← עורקים ← נימי הרקמות (מוסר O₂, קולט CO₂) ← ורידים נבובים ← עלייה ימנית ← חדר ימין ← עורקי הריאה ← נימי הריאה (משחרר CO₂, קולט O₂) ← ורידי הריאה ← עלייה שמאלית ← חדר שמאל.'],
+['מדוע עובי הדופן של שני חדרי הלב אינו שווה? איך זה קשור למרחק ולהתנגדות בכלי הדם?','חדר שמאל מזרים דם לכל חלקי הגוף: המרחק גדול וההתנגדות בכלי הדם גדולה, ולכן נדרש לחץ גבוה, ודופן עבה ושרירית מייצרת אותו. חדר ימין מזרים דם רק לריאות הקרובות: מרחק קצר והתנגדות קטנה, ולכן מספיק לחץ נמוך יותר ודופן דקה יותר.'],
+['מה תפקיד המסתמים בלב ובוורידים, ומה עלול לקרות כשמסתם לא נסגר כראוי?','המסתמים מאפשרים זרימה בכיוון אחד ומונעים מהדם לחזור לאחור. בוורידים הם עוזרים לדם לחזור אל הלב, למשל מהרגליים נגד כוח הכובד. כשמסתם לא נסגר כראוי, חלק מהדם זורם חזרה, בכל פעימה מתקדם פחות דם, והלב צריך לעבוד קשה יותר כדי לספק את אותה כמות. אספקת החמצן לרקמות עלולה להיפגע.'],
+['מהם שני הרכיבים של תפוקת הלב? איך אימון אירובי משפיע על נפח הפעימה, ולמה זה משנה את הדופק במנוחה?','תפוקת לב = נפח פעימה × קצב הלב. אימון אירובי מתמשך מחזק ומגדיל את שריר הלב, ולכן נפח הפעימה גדל. במנוחה הגוף צריך בערך אותה תפוקת לב, ולכן כשכל פעימה מזרימה יותר דם, מספיקות פחות פעימות בדקה. הדופק במנוחה נמוך יותר.'],
+['איך שינוי בקוטר כלי הדם ההיקפיים בעור עוזר לשמור על טמפרטורה תקינה בחום לעומת קור?','בסביבה חמה כלי הדם מתרחבים: יותר דם זורם קרוב לפני העור, ויותר חום עובר לסביבה. בסביבה קרה כלי הדם מתכווצים: פחות דם זורם קרוב לעור, פחות חום אובד, והחום נשמר בפנים הגוף.'],
+['מדוע לבעלי חיים קטנים קשה יותר לשמור על חום גופם בסביבה קרה מאוד?','חום מופק בתאים, בכל נפח הגוף, ואובד דרך שטח הפנים. לבעל חיים קטן יש שטח פנים גדול ביחס לנפח, ולכן הוא מאבד חום מהר יחסית לכמות החום שהוא מפיק, וקשה לו לשמור על טמפרטורת גוף יציבה.']
+];
+
+const LABS=[['sugar','מאזן הסוכר','בחרו את ההורמון הנכון והחזירו את הסוכר לטווח'],['route','מסע תא הדם','סדרו את התחנות מחדר שמאל ובחזרה'],['heart','מד תפוקת הלב','שחקו עם נפח הפעימה והדופק'],['thermo','תרמוסטט הגוף','חם או קר? הפעילו את התגובות הנכונות'],['cube','קטן מול גדול','גלו למה עכבר מתקרר מהר']];
+const LEVELS=[['תא',0],['רקמה',80],['איבר',200],['מערכת',380],['אורגניזם',600]];
+
+/* ---------- state ---------- */
+const $=s=>document.querySelector(s), V=$('#view');
+let S={xp:0,cards:{},tq:{},best:0,done:{}};
+try{Object.assign(S,JSON.parse(localStorage.getItem('bio10')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('bio10',JSON.stringify(S))}catch(e){}};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+let tT;
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>e.classList.remove('show'),1500)}
+function hud(){let i=0;while(i<LEVELS.length-1&&S.xp>=LEVELS[i+1][1])i++;
+  const lo=LEVELS[i][1],hi=i<LEVELS.length-1?LEVELS[i+1][1]:lo;
+  $('#lvl').innerHTML='דרגה: '+LEVELS[i][0]+' <small>'+S.xp+' XP</small>';
+  $('#xpbar').style.width=(hi>lo?Math.min(100,(S.xp-lo)/(hi-lo)*100):100)+'%'}
+function addXp(n,msg){const before=$('#lvl').textContent.split(' ')[1];S.xp+=n;save();hud();
+  const after=$('#lvl').textContent.split(' ')[1];toast(after!==before?'עלית דרגה: '+after+'!':(msg||'')+' +'+n+' XP')}
+let tab='learn',deck=null,ci=0,lab=null;
+function go(t){tab=t;deck=null;lab=null;render()}
+function render(){document.querySelectorAll('nav button').forEach(b=>b.dataset.tab===tab?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+  ({learn,lab:labs,quiz,tq})[tab]();window.scrollTo(0,0)}
+document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.tab)};
+
+/* ---------- learn ---------- */
+function learn(){
+  if(deck===null){
+    V.innerHTML='<h1>שומרים על הגוף באיזון</h1><p class="muted">שלוש תחנות, כל אחת כמה כרטיסים קצרים. אחר כך עוברים למעבדה ולחידון.</p>'+
+    DECKS.map((d,i)=>{const n=d.cards.filter((c,j)=>S.cards[d.id+j]).length,all=n===d.cards.length;
+      return '<button class="tile '+(all?'done':i===1?'':'v')+'" onclick="deck='+i+';ci=0;render()"><span class="n">'+(i+1)+'</span><span class="grow"><b>'+d.name+'</b><span class="s">'+n+' מתוך '+d.cards.length+' כרטיסים'+(all?' · הושלם':'')+'</span></span></button>'}).join('');
+    return}
+  const d=DECKS[deck],c=d.cards[ci],last=ci===d.cards.length-1;
+  V.innerHTML='<button class="back" onclick="deck=null;render()">→ כל התחנות</button>'+
+   '<div class="dots">'+d.cards.map((x,j)=>'<i class="'+(j<=ci?'on':'')+'"></i>').join('')+'</div>'+
+   '<div class="panel"><span class="eyebrow">'+d.name+'</span><h2>'+c.h+'</h2>'+
+   (c.p?'<p>'+c.p+'</p>':'')+
+   (c.flow?'<div class="flow">'+c.flow.map((f,j)=>{const m=/^([rb]):(.*)/.exec(f);return (j?'<s>↓</s>':'')+'<div class="'+(m?m[1]:'')+'">'+(m?m[2]:f)+'</div>'}).join('')+'</div>':'')+
+   (c.flow&&/^[rb]:/.test(c.flow[0])?'<p class="muted" style="font-size:.9rem">אדום: דם עשיר בחמצן. כחול: דם דל בחמצן.</p>':'')+
+   (c.tip?'<div class="tip"><b>לזכור: </b>'+c.tip+'</div>':'')+'</div>'+
+   '<div class="row">'+(ci?'<button class="btn ghost" onclick="ci--;render()">הקודם</button>':'')+
+   '<button class="btn" onclick="nextCard()">'+(last?'סיימתי את התחנה':'הבנתי, הלאה')+'</button></div>';
+}
+function nextCard(){const d=DECKS[deck],k=d.id+ci;if(!S.cards[k]){S.cards[k]=1;addXp(5)}
+  if(ci<d.cards.length-1){ci++;render()}else{deck=null;render();toast('תחנה הושלמה. עכשיו למעבדה!')}}
+
+/* ---------- labs ---------- */
+function labs(){
+  if(!lab){V.innerHTML='<h1>המעבדה</h1><p class="muted">חמישה ניסויים קצרים. כאן החומר הופך למשהו שמרגישים בידיים.</p>'+
+    LABS.map((l,i)=>'<button class="tile '+(S.done[l[0]]?'done':i%2?'v':'')+'" onclick="openLab(\''+l[0]+'\')"><span class="n">'+(i+1)+'</span><span class="grow"><b>'+l[1]+'</b><span class="s">'+l[2]+(S.done[l[0]]?' · בוצע':'')+'</span></span></button>').join('');return}
+  ({sugar,route,heart,thermo,cube})[lab]()}
+function openLab(l){lab=l;G={};render()}
+function labDone(k,xp){if(!S.done[k]){S.done[k]=1;addXp(xp)}else addXp(5)}
+const backLab='<button class="back" onclick="lab=null;render()">→ כל הניסויים</button>';
+let G={};
+
+/* sugar */
+const SUG=[['אכלת פיצה משפחתית לבד',1],['לא אכלת כלום מהבוקר, וכבר שלוש בצהריים',-1],['שתית פחית משקה ממותק',1],['שיעור ספורט: ריצת 2,000 מטר',-1],['קינחת בעוגת שוקולד',1],['צום יום כיפור, שעה לפני הסיום',-1]];
+const ACTS=['תאי שריר, שומן וכבד קולטים גלוקוז מהדם','הכבד מפרק גליקוגן לגלוקוז ומשחרר אותו לדם','הלבלב הופך גלוקגון לגליקוגן'];
+function sugar(){
+  if(!G.r){G={r:shuffle(SUG),i:0,score:0,step:0,pos:50}}
+  if(G.i>=G.r.length){V.innerHTML=backLab+'<div class="panel"><h2>הסוכר באיזון</h2><div class="big">'+G.score+' / '+G.r.length+'</div><p>'+(G.score===G.r.length?'לבלב מושלם. שלטת בשני הכיוונים של המשוב.':'שווה סיבוב נוסף: עלה? אינסולין. ירד? גלוקגון.')+'</p><div class="row"><button class="btn" onclick="G={};render()">סיבוב נוסף</button></div></div>';return}
+  const [ev,dir]=G.r[G.i],up=dir>0;
+  let body;
+  if(G.step===0)body='<p><b>רמת הסוכר '+(up?'עלתה':'ירדה')+'.</b> איזה הורמון הלבלב מפריש עכשיו?</p><div class="opts">'+['אינסולין','גלוקגון'].map((h,j)=>'<button class="opt" onclick="sugH('+j+')">'+h+'</button>').join('')+'</div>';
+  else if(G.step===1)body='<p><b>נכון, '+(up?'אינסולין':'גלוקגון')+'.</b> ומה ההורמון גורם?</p><div class="opts">'+G.acts.map(a=>'<button class="opt" onclick="sugA('+a+')">'+ACTS[a]+'</button>').join('')+'</div>';
+  else body='<div class="fb '+(G.ok?'ok':'no')+'"><b>'+(G.ok?'הסוכר חזר לטווח התקין':'הסוכר ברח מהטווח')+'</b>'+(up?'סוכר גבוה ← הלבלב מפריש אינסולין ← התאים קולטים גלוקוז ← הסוכר יורד, והפרשת האינסולין מופחתת.':'סוכר נמוך ← הלבלב מפריש גלוקגון ← הכבד מפרק גליקוגן לגלוקוז ← הסוכר עולה, והפרשת הגלוקגון מופחתת.')+'</div><div class="row"><button class="btn" onclick="G.i++;G.step=0;G.pos=50;render()">הלאה</button></div>';
+  V.innerHTML=backLab+'<div class="panel"><span class="eyebrow">מאזן הסוכר · סבב '+(G.i+1)+' מתוך '+G.r.length+'</span><h2>'+ev+'</h2>'+
+   '<div><div class="gauge"><i id="gm" style="left:'+G.pos+'%"></i></div><div class="glab"><span>נמוך</span><span>טווח תקין</span><span>גבוה</span></div></div>'+body+'</div>';
+  if(G.step===0)setTimeout(()=>{G.pos=50+dir*30;const m=$('#gm');if(m)m.style.left=G.pos+'%'},60);
+}
+function sugMove(p){G.pos=p;setTimeout(()=>{const m=$('#gm');if(m)m.style.left=p+'%'},60)}
+function sugH(j){const dir=G.r[G.i][1],prev=G.pos;if((j===0)===(dir>0)){G.step=1;G.acts=shuffle([0,1,2]);render()}else{G.step=2;G.ok=false;render();$('#gm').style.left=prev+'%';sugMove(50+dir*44)}}
+function sugA(a){const dir=G.r[G.i][1],prev=G.pos;G.ok=a===(dir>0?0:1);G.step=2;if(G.ok){G.score++;addXp(8)}render();$('#gm').style.left=prev+'%';sugMove(G.ok?50:50+dir*44);
+  if(G.i===G.r.length-1&&G.score>=5&&!S.done.sugar){S.done.sugar=1;save()}}
+
+/* route */
+const RT=[['אבי העורקים','r'],['נימי הרקמות בגוף',''],['ורידים נבובים','b'],['עלייה ימנית','b'],['חדר ימין','b'],['עורקי הריאה','b'],['נימי הריאה',''],['ורידי הריאה','r'],['עלייה שמאלית','r']];
+function route(){
+  if(!G.ord){G={ord:shuffle(RT.map((x,i)=>i)),at:0,miss:0}}
+  const fin=G.at===RT.length;
+  V.innerHTML=backLab+'<div class="panel"><span class="eyebrow">מסע תא הדם</span><h2>'+(fin?'חזרת לחדר שמאל':'לאן ממשיכים?')+'</h2>'+
+   '<div class="flow"><div class="r">חדר שמאל</div>'+RT.slice(0,G.at).map(x=>'<s>↓</s><div class="'+x[1]+'">'+x[0]+'</div>').join('')+(fin?'<s>↓</s><div class="r">חדר שמאל</div>':'')+'</div>'+
+   (fin?'<div class="fb ok"><b>'+(G.miss?G.miss+' טעויות בדרך':'בלי אף טעות')+'</b>אדום: דם עשיר בחמצן. כחול: דם דל בחמצן. שימו לב שעורקי הריאה כחולים וורידי הריאה אדומים.</div><div class="row"><button class="btn" onclick="G={};render()">שוב, מהר יותר</button></div>'
+   :'<p class="muted">הקישו על התחנה הבאה של תא הדם האדום.</p><div class="chips">'+G.ord.filter(i=>i>=G.at).map(i=>'<button class="chip" id="c'+i+'" onclick="rtTap('+i+')">'+RT[i][0]+'</button>').join('')+'</div>')+'</div>';
+}
+function rtTap(i){if(i===G.at){G.at++;if(G.at===RT.length)labDone('route',Math.max(10,30-G.miss*4));render();window.scrollTo(0,document.body.scrollHeight)}
+  else{G.miss++;const c=$('#c'+i);c.classList.remove('shake');void c.offsetWidth;c.classList.add('shake')}}
+
+/* heart */
+function heart(){
+  G.sv=G.sv||70;G.hr=G.hr||72;
+  V.innerHTML=backLab+'<div class="panel"><span class="eyebrow">מד תפוקת הלב</span><h2>כמה דם הלב מזרים בדקה?</h2>'+
+   '<svg class="heart" id="hrt" viewBox="0 0 32 30" aria-hidden="true"><path d="M16 28C4 18 1 12 1 8a7 7 0 0 1 15-3 7 7 0 0 1 15 3c0 4-3 10-15 20z"/></svg>'+
+   '<div style="text-align:center"><div class="big" id="co"></div><b>ליטר בדקה</b><p class="muted"><span class="ltr" id="calc"></span></p></div>'+
+   '<div><label for="sv">נפח פעימה <output id="svo"></output></label><input type="range" id="sv" min="50" max="130" step="5" value="'+G.sv+'" oninput="hUpd()"></div>'+
+   '<div><label for="hr">קצב הלב <output id="hro"></output></label><input type="range" id="hr" min="40" max="180" step="2" value="'+G.hr+'" oninput="hUpd()"></div>'+
+   '<div class="row"><button class="btn ghost" onclick="hSet(70,72)">אדם לא מאומן</button><button class="btn alt" onclick="hSet(100,50)">ספורטאי</button></div>'+
+   '<div class="tip" id="hins"></div><p class="muted" style="font-size:.9rem">המספרים הם ערכים טיפוסיים לדוגמה. במנוחה הגוף צריך בערך 5 ליטר דם בדקה.</p></div>';
+  hUpd()}
+function hSet(a,b){$('#sv').value=a;$('#hr').value=b;hUpd();if(a===100&&!S.done.heart)labDone('heart',20)}
+function hUpd(){const sv=+$('#sv').value,hr=+$('#hr').value;G.sv=sv;G.hr=hr;
+  $('#svo').textContent=sv+' מ"ל';$('#hro').textContent=hr+' פעימות בדקה';
+  $('#co').textContent=(sv*hr/1000).toFixed(1);$('#calc').textContent=sv+' × '+hr+' = '+(sv*hr).toLocaleString('en')+' mL';
+  $('#hrt').style.animationDuration=(60/hr).toFixed(2)+'s';
+  $('#hins').innerHTML='<b>התובנה: </b>עם נפח פעימה של '+sv+' מ"ל, כדי להזרים 5 ליטר בדקה במנוחה צריך '+Math.round(5000/sv)+' פעימות בדקה. ככל שנפח הפעימה גדול יותר, הדופק במנוחה נמוך יותר.'}
+
+/* thermo */
+const TH=[['צהריים באילת באוגוסט, 42 מעלות',1],['טיול בחרמון, שלג ורוח',0],['דקה 80 במשחק כדורגל',1],['יצאת מהבריכה לרוח קרה',0],['אימון אינטרוולים בחדר כושר',1],['מחכים לאוטובוס בליל חורף, בלי מעיל',0]];
+const RESP=[['הרחבת כלי הדם בעור',1],['הזעה',1],['התכווצות כלי הדם בעור',0],['רעד שרירים',0]];
+function thermo(){
+  if(!G.r){G={r:shuffle(TH),i:0,score:0,sel:[],chk:false}}
+  if(G.i>=G.r.length){V.innerHTML=backLab+'<div class="panel"><h2>התרמוסטט עובד</h2><div class="big">'+G.score+' / '+G.r.length+'</div><p>חם: מרחיבים כלי דם ומזיעים, כדי לאבד חום. קר: מכווצים כלי דם ורועדים, כדי לשמור ולהפיק חום.</p><div class="row"><button class="btn" onclick="G={};render()">סיבוב נוסף</button></div></div>';return}
+  const [t,hot]=G.r[G.i];
+  V.innerHTML=backLab+'<div class="panel"><span class="eyebrow">תרמוסטט הגוף · מצב '+(G.i+1)+' מתוך '+G.r.length+'</span><h2>'+t+'</h2><p>אילו תגובות הגוף מפעיל? סמנו את כל המתאימות.</p>'+
+   '<div class="opts">'+RESP.map((r,j)=>{const on=G.sel.includes(j);return '<button class="opt'+(G.chk?(r[1]===hot?' ok':on?' no':''):'')+'" aria-pressed="'+(on&&!G.chk)+'" '+(G.chk?'disabled':'')+' onclick="thT('+j+')">'+r[0]+'</button>'}).join('')+'</div>'+
+   (G.chk?'<div class="skin">פני העור<i style="height:'+(hot?22:5)+'px"></i>כלי דם היקפי '+(hot?'רחב: הרבה דם קרוב לעור, החום יוצא':'צר: מעט דם קרוב לעור, החום נשמר')+'</div><div class="fb '+(G.ok?'ok':'no')+'"><b>'+(G.ok?'בדיוק':'כמעט')+'</b>'+(hot?'הגוף מתחמם, ולכן הוא מגביר את איבוד החום: מרחיב כלי דם היקפיים ומזיע.':'הגוף מתקרר, ולכן הוא מצמצם איבוד חום (מכווץ כלי דם היקפיים) ומגביר הפקת חום (רעד שרירים).')+'</div><div class="row"><button class="btn" onclick="G.i++;G.sel=[];G.chk=false;render()">הלאה</button></div>'
+   :'<div class="row"><button class="btn" '+(G.sel.length?'':'disabled')+' onclick="thC()">בדיקה</button></div>')+'</div>';
+}
+function thT(j){G.sel=G.sel.includes(j)?G.sel.filter(x=>x!==j):G.sel.concat(j);thermo()}
+function thC(){const hot=G.r[G.i][1];G.ok=RESP.every((r,j)=>(r[1]===hot)===G.sel.includes(j));G.chk=true;if(G.ok){G.score++;addXp(8)}
+  if(G.i===G.r.length-1&&G.score>=5&&!S.done.thermo){S.done.thermo=1;save()}thermo()}
+
+/* cube */
+function cube(){
+  G.a=G.a||2;
+  V.innerHTML=backLab+'<div class="panel"><span class="eyebrow">קטן מול גדול</span><h2>בעל חיים בצורת קובייה</h2><p>חום מופק בכל הנפח, ובורח דרך שטח הפנים. הזיזו את המחוון וראו מה קורה ליחס ביניהם.</p>'+
+   '<div class="cubebox"><div class="cube" id="cb"></div></div>'+
+   '<div><label for="ca">אורך צלע <output id="cao"></output></label><input type="range" id="ca" min="1" max="10" value="'+G.a+'" oninput="cUpd()"><div class="glab" style="direction:rtl"><span>קטן כמו עכבר</span><span>גדול כמו פיל</span></div></div>'+
+   '<div class="stats"><div><b id="csa"></b><span>שטח פנים</span></div><div><b id="cv"></b><span>נפח</span></div><div><b id="cr"></b><span>שטח פנים לנפח</span></div></div>'+
+   '<div class="tip" id="cins"></div></div>';
+  cUpd()}
+function cUpd(){const a=+$('#ca').value;if(a!==G.a&&!S.done.cube&&(G.moved=(G.moved||0)+1)>3)labDone('cube',15);G.a=a;
+  const s=24+a*13;$('#cb').style.width=$('#cb').style.height=s+'px';$('#cao').textContent=a+' ס"מ';
+  $('#csa').textContent=6*a*a;$('#cv').textContent=a*a*a;$('#cr').textContent=(6/a).toFixed(1);
+  $('#cins').innerHTML='<b>מה זה אומר: </b>על כל יחידת נפח שמפיקה חום יש '+(6/a).toFixed(1)+' יחידות שטח שדרכן החום בורח. '+(a<=3?'יחס גדול: הגוף מאבד חום מהר, וקשה לו בקור.':a>=7?'יחס קטן: הגוף שומר על החום בקלות יחסית.':'ככל שהגוף גדל, היחס קטן.')}
+
+/* ---------- quiz ---------- */
+let Z=null;
+function quiz(){
+  if(!Z){V.innerHTML='<h1>חידון בזק</h1><div class="panel"><p>עשר שאלות אקראיות מתוך '+Q.length+', עם הסבר אחרי כל תשובה. רצף של שלוש תשובות נכונות מזכה בבונוס.</p><div class="stats"><div><b>'+S.best+'</b><span>שיא אישי</span></div><div><b>10</b><span>שאלות</span></div><div><b>'+Q.length+'</b><span>במאגר</span></div></div><div class="row"><button class="btn" onclick="zStart()">מתחילים</button></div></div>';return}
+  if(Z.i>=Z.qs.length){const rec=Z.score>S.best;if(rec){S.best=Z.score;save()}
+    V.innerHTML='<div class="panel"><span class="eyebrow">'+(rec?'שיא אישי חדש':'סוף הסיבוב')+'</span><div class="big">'+Z.score+' / 10</div><p>'+(Z.score>=9?'מוכנים למבחן. עברו גם על שאלות המורה.':Z.score>=6?'בסיס טוב. חזרו על ההסברים של השאלות שפספסתם ונסו שוב.':'שווה לחזור למסלול, לעבור על הכרטיסים ולנסות שוב.')+'</p><div class="row"><button class="btn" onclick="zStart()">סיבוב נוסף</button><button class="btn ghost" onclick="Z=null;go(\'tq\')">לשאלות המורה</button></div></div>';return}
+  const q=Z.qs[Z.i];
+  V.innerHTML='<div class="dots">'+Z.qs.map((x,j)=>'<i class="'+(j<=Z.i?'on':'')+'"></i>').join('')+'</div><div class="panel"><span class="eyebrow">שאלה '+(Z.i+1)+' מתוך 10'+(Z.streak>=2?' · רצף '+Z.streak:'')+'</span><h3>'+q[0]+'</h3>'+
+   '<div class="opts">'+Z.ord.map(k=>'<button class="opt'+(Z.pick!=null?(k===0?' ok':k===Z.pick?' no':''):'')+'" '+(Z.pick!=null?'disabled':'')+' onclick="zPick('+k+')">'+q[1][k]+'</button>').join('')+'</div>'+
+   (Z.pick!=null?'<div class="fb '+(Z.pick===0?'ok':'no')+'"><b>'+(Z.pick===0?'נכון':'לא הפעם')+'</b>'+q[2]+'</div><div class="row"><button class="btn" onclick="zNext()">'+(Z.i===9?'לתוצאה':'הבאה')+'</button></div>':'')+'</div>';
+}
+function zStart(){Z={qs:shuffle(Q).slice(0,10),i:0,score:0,streak:0,pick:null};Z.ord=shuffle(Z.qs[0][1].map((x,k)=>k));render()}
+function zPick(k){Z.pick=k;if(k===0){Z.score++;Z.streak++;addXp(Z.streak%3===0?15:10,Z.streak%3===0?'בונוס רצף':'')}else Z.streak=0;quiz()}
+function zNext(){Z.i++;Z.pick=null;if(Z.i<10)Z.ord=shuffle(Z.qs[Z.i][1].map((x,k)=>k));render()}
+
+/* ---------- teacher questions ---------- */
+let tqi=null,tqShow=false;
+const RATE=['עוד לא','בערך','ידעתי'];
+function tq(){
+  if(tqi===null){const n=TQ.filter((x,i)=>S.tq[i]===2).length;
+    V.innerHTML='<h1>שאלות המורה</h1><p class="muted">השאלות המנחות מדף ההכנה. ענו בקול או במחברת, ורק אז חשפו תשובה לדוגמה ודרגו את עצמכם. '+n+' מתוך '+TQ.length+' בשליטה.</p>'+
+    TQ.map((q,i)=>'<button class="tile '+(S.tq[i]===2?'done':S.tq[i]===1?'':'v')+'" onclick="tqi='+i+';tqShow=false;render()"><span class="n">'+(i+1)+'</span><span class="grow"><b style="font-weight:600;font-size:1rem">'+q[0]+'</b>'+(S.tq[i]!=null?'<span class="s">'+RATE[S.tq[i]]+'</span>':'')+'</span></button>').join('');return}
+  const q=TQ[tqi];
+  V.innerHTML='<button class="back" onclick="tqi=null;render()">→ כל השאלות</button><div class="panel"><span class="eyebrow">שאלה '+(tqi+1)+' מתוך '+TQ.length+'</span><h3>'+q[0]+'</h3>'+
+   (tqShow?'<div class="fb ok"><b>תשובה לדוגמה</b>'+q[1]+'</div><p><b>איך הלך?</b></p><div class="row">'+RATE.map((r,j)=>'<button class="btn '+(j===2?'':'ghost')+'" onclick="tqRate('+j+')">'+r+'</button>').join('')+'</div>'
+   :'<p class="muted">קודם נסו לענות בעצמכם, במילים שלכם.</p><div class="row"><button class="btn" onclick="tqShow=true;tq()">חשיפת התשובה</button></div>')+'</div>';
+}
+function tqRate(j){const first=S.tq[tqi]==null;S.tq[tqi]=j;save();if(first)addXp(10);
+  if(tqi<TQ.length-1){tqi++;tqShow=false}else tqi=null;render()}
+
+hud();render();
+</script>
